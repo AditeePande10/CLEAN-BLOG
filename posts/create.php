@@ -69,6 +69,4 @@ if (isset($_POST['submit'])) {
           
             </form>
 
-<?php require "includes/footer.php" ?>
-
-
+<?php require "../includes/footer.php"; ?>
