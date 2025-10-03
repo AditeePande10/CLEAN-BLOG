@@ -25,8 +25,8 @@ if (isset($_GET['post_id'])) {
                             <span class="meta">
                                 Posted by
                                 <a href="#!"> <?php echo $post->user_name; ?> </a>
-                                <!-- <?php  echo date('M', strtotime($post->user_name)) . ',' . date('d', strtotime($post->user_namet)) . ' ' . date('Y', strtotime($post->user_name));  ?> -->
-                                 <?php  echo date('M, d Y', strtotime($post->created_at)); ?>
+                                <?php  echo date('M', strtotime($post->created_at)) . ',' . date('d', strtotime($post->created_at)) . ' ' . date('Y', strtotime($post->created_at));  ?>
+                                 <!-- <?php  echo date('M, d Y', strtotime($post->created_at)); ?> -->
                             </span>
                         </div>
                     </div>
@@ -46,6 +46,13 @@ if (isset($_GET['post_id'])) {
                             &middot; Images by
                             <a href="https://www.flickr.com/photos/nasacommons/">NASA on The Commons</a>
                         </p> -->
+
+                        <?php if(isset($_SESSION['user_id']) AND $_SESSION['user_id'] == $post->user_id ) : ?>
+                            <a href="http://localhost/clean-blog/posts/delete.php?del_id=<?php echo $post->id; ?>" class="btn btn-danger text-center float-end">Delete</a>
+
+                            <a href="update.php?upd_id=<?php echo $post->id; ?>" class="btn btn-warning text-center">Update</a>
+
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
