@@ -1,89 +1,94 @@
-<?php require "../includes/header.php" ?>
-<?php require "../config/config.php"; ?>
+<?php 
+require "../includes/header.php";
+require "../config/config.php"; 
 
-<?php
-    if (isset($_GET['upd_id'])) {
-        $id = $_GET['upd_id'];
+// ✅ Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-        //first query
-        $select = $conn->query("SELECT * FROM posts WHERE id = '$id'");
-        $select->execute();
-        $rows = $select->fetch(PDO::FETCH_OBJ);
+if (isset($_GET['upd_id'])) {
+    $id = $_GET['upd_id'];
 
-        if ($_SESSION['user_id'] !== $rows->user_id) {
-            header("Location: http://localhost/clean-blog/index.php");
-            exit(); // good practice after header redirect
-  }
+    // ✅ Use prepared statement (more secure)
+    $select = $conn->prepare("SELECT * FROM posts WHERE id = :id");
+    $select->execute([':id' => $id]);
+    $rows = $select->fetch(PDO::FETCH_OBJ);
 
-        //second query
-        if(isset($_POST['submit'])) {
-            if($_POST['title'] == '' OR $_POST['subtitle'] == '' OR 
-            $_POST['body'] == '') {
-                echo "one or more inputs are empty";
-            } else {
+    if (!$rows) {
+        header("Location: http://localhost/clean-blog/index.php");
+        exit();
+    }
 
-                unlink("images/" . $rows->img. "");
+    // ✅ Verify post ownership
+    if ($_SESSION['user_id'] != $rows->user_id) {
+        header("Location: http://localhost/clean-blog/index.php");
+        exit();
+    }
 
+    // ✅ Handle form submission
+    if (isset($_POST['submit'])) {
+        if (empty($_POST['title']) || empty($_POST['subtitle']) || empty($_POST['body'])) {
+            echo "One or more inputs are empty";
+        } else {
+            $title = $_POST['title'];
+            $subtitle = $_POST['subtitle'];
+            $body = $_POST['body'];
 
+            // Handle image
+            if (!empty($_FILES['img']['name'])) {
+                // delete old image if exists
+                if (!empty($rows->img) && file_exists("images/" . $rows->img)) {
+                    unlink("images/" . $rows->img);
+                }
 
-
-
-
-
-                $title = $_POST['title'];
-                $subtitle = $_POST['subtitle'];
-                $body = $_POST['body'];
                 $img = $_FILES['img']['name'];
-
                 $dir = 'images/' . basename($img);
-    
-                
-                $update = $conn->prepare("UPDATE posts SET title = :title, subtitle = :subtitle, 
-                body = :body, img= :img WHERE id = '$id' ");
-    
-                $update->execute([
-                    ':title' => $title,
-                    ':subtitle' => $subtitle,
-                    ':body' => $body,
-                    ':img' => $img
-                ]);
-
-                if (move_uploaded_file($_FILES['img']['tmp_name'], $dir)) {
-                    header("Location: http://localhost/clean-blog/index.php");
+                move_uploaded_file($_FILES['img']['tmp_name'], $dir);
+            } else {
+                $img = $rows->img; // ✅ keep old image if new not uploaded
             }
+
+            // ✅ Update query
+            $update = $conn->prepare("UPDATE posts 
+                SET title = :title, subtitle = :subtitle, body = :body, img = :img 
+                WHERE id = :id");
+            
+            $update->execute([
+                ':title' => $title,
+                ':subtitle' => $subtitle,
+                ':body' => $body,
+                ':img' => $img,
+                ':id' => $id
+            ]);
+
+            header("Location: http://localhost/clean-blog/index.php");
+            exit();
         }
-                
-        } 
-    }    
-         
+    }
+}
 ?>
-            <form method="POST" action="update.php?upd_id=<?php echo $id; ?>" enctype="multipart/form-data" >
-              <!-- Email input -->
-              <div class="form-outline mb-4">
-                <input type="text" name="title" value="<?php echo $rows->title; ?>"id="form2Example1" class="form-control" placeholder="title" />
-               
-              </div>
 
-              <div class="form-outline mb-4">
-                <input type="text" name="subtitle" value="<?php echo $rows->subtitle; ?>" id="form2Example1" class="form-control" placeholder="subtitle" />
-            </div>
+<form method="POST" action="update.php?upd_id=<?php echo $id; ?>" enctype="multipart/form-data">
+    <div class="form-outline mb-4">
+        <input type="text" name="title" value="<?php echo $rows->title; ?>" class="form-control" placeholder="title" />
+    </div>
 
-              <div class="form-outline mb-4">
-                <textarea type="text" name="body" id="form2Example1" class="form-control" placeholder="body" rows="8"><?php echo $rows->body; ?> </textarea>
-            </div>
+    <div class="form-outline mb-4">
+        <input type="text" name="subtitle" value="<?php echo $rows->subtitle; ?>" class="form-control" placeholder="subtitle" />
+    </div>
 
-                <?php echo "<img src='images/" . $rows->img . "' width=900px height=300px'> " ; ?>
-              
-             <div class="form-outline mb-4">
-                <input type="file" name="img" id="form2Example1" class="form-control" placeholder="img" />
-            </div>
+    <div class="form-outline mb-4">
+        <textarea name="body" class="form-control" placeholder="body" rows="8"><?php echo $rows->body; ?></textarea>
+    </div>
 
+    <?php echo "<img src='images/" . $rows->img . "' width=900 height=300>"; ?>
 
-              <!-- Submit button -->
-              <button type="submit" name="submit" class="btn btn-primary  mb-4 text-center">Update</button>
+    <div class="form-outline mb-4">
+        <input type="file" name="img" class="form-control" />
+    </div>
 
-          
-            </form>
-
+    <button type="submit" name="submit" class="btn btn-primary mb-4 text-center">Update</button>
+</form>
 
 <?php require "../includes/footer.php"; ?>
